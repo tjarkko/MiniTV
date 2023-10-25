@@ -6,12 +6,16 @@
  */
 // auto fall back to MP3 if AAC file not available
 #define AAC_FILENAME "/44100.aac"
-#define MP3_FILENAME "/44100.mp3"
-#define MJPEG_FILENAME "/288_30fps.mjpeg"
-// #define MJPEG_FILENAME "/320_30fps.mjpeg"
+// #define MP3_FILENAME "/44100.mp3"
+#define MP3_FILENAME "/output_3.mp3"
+// #define MJPEG_FILENAME "/288_30fps.mjpeg"
+#define MJPEG_FILENAME "/128_30fps.mjpeg"
+//  #define MJPEG_FILENAME "/320_30fps.mjpeg"
 #define FPS 30
-#define MJPEG_BUFFER_SIZE (288 * 240 * 2 / 8)
-// #define MJPEG_BUFFER_SIZE (320 * 240 * 2 / 8)
+// #define FPS 24
+// #define MJPEG_BUFFER_SIZE (288 * 240 * 2 / 8)
+#define MJPEG_BUFFER_SIZE (128 * 128 * 2 / 4)
+//  #define MJPEG_BUFFER_SIZE (320 * 240 * 2 / 8)
 #define AUDIOASSIGNCORE 1
 #define DECODEASSIGNCORE 0
 #define DRAWASSIGNCORE 1
@@ -26,10 +30,28 @@
 
 /* Arduino_GFX */
 #include <Arduino_GFX_Library.h>
-#define GFX_BL DF_GFX_BL // default backlight pin, you may replace DF_GFX_BL to actual backlight pin
-Arduino_DataBus *bus = create_default_Arduino_DataBus();
-// Arduino_GFX *gfx = new Arduino_ILI9341(bus, DF_GFX_RST, 3 /* rotation */, false /* IPS */);
-Arduino_GFX *gfx = new Arduino_ST7789(bus, DF_GFX_RST, 1 /* rotation */, true /* IPS */, 240 /* width */, 288 /* height */, 0 /* col offset 1 */, 20 /* row offset 1 */, 0 /* col offset 2 */, 12 /* row offset 2 */);
+// #define GFX_BL DF_GFX_BL // default backlight pin, you may replace DF_GFX_BL to actual backlight pin
+
+// old breadboard
+// int SD_MISO = 19;
+int SD_MISO = 21;
+int SD_SCK = 5;
+// old breadboard
+// int SD_MOSI = 18;
+int SD_MOSI = 19;
+int SD_CS = 14;
+int LCD_SCK = 12;
+int LCD_MISO = 13;
+int LCD_MOSI = 27;
+int LCD_DC_A0 = 33;
+// int LCD_RESET = 33;
+int LCD_CS = 15;
+
+// Arduino_DataBus *bus = create_default_Arduino_DataBus();
+//  Arduino_GFX *gfx = new Arduino_ILI9341(bus, DF_GFX_RST, 3 /* rotation */, false /* IPS */);
+// Arduino_GFX *gfx = new Arduino_ST7789(bus, DF_GFX_RST, 1 /* rotation */, true /* IPS */, 240 /* width */, 288 /* height */, 0 /* col offset 1 */, 20 /* row offset 1 */, 0 /* col offset 2 */, 12 /* row offset 2 */);
+Arduino_ESP32SPI *bus = new Arduino_ESP32SPI(LCD_DC_A0 /* DC */, LCD_CS /* CS */, LCD_SCK /* SCK */, LCD_MOSI /* MOSI */, LCD_MISO /* MISO */);
+Arduino_GFX *gfx = new Arduino_SSD1351(bus);
 
 /* variables */
 static int next_frame = 0;
@@ -61,7 +83,8 @@ void setup()
   // while (!Serial);
 
   // Init Display
-  gfx->begin(80000000);
+  // gfx->begin(80000000);
+  gfx->begin();
   gfx->fillScreen(BLACK);
 
 #ifdef GFX_BL
@@ -72,7 +95,7 @@ void setup()
   Serial.println("Init I2S");
   gfx->println("Init I2S");
 #if defined(ESP32) && (CONFIG_IDF_TARGET_ESP32)
-  esp_err_t ret_val = i2s_init(I2S_NUM_0, 44100, -1 /* MCLK */, 25 /* SCLK */, 26 /* LRCK */, 32 /* DOUT */, -1 /* DIN */);
+  esp_err_t ret_val = i2s_init(I2S_NUM_0, 44100, -1 /* MCLK */, 26 /* SCLK */, 25 /* LRCK */, 22 /* DOUT */, -1 /* DIN */);
 #elif defined(ESP32) && (CONFIG_IDF_TARGET_ESP32S2)
   esp_err_t ret_val = i2s_init(I2S_NUM_0, 44100, -1 /* MCLK */, 4 /* SCLK */, 5 /* LRCK */, 18 /* DOUT */, -1 /* DIN */);
 #elif defined(ESP32) && (CONFIG_IDF_TARGET_ESP32S3)
@@ -88,15 +111,17 @@ void setup()
 
   Serial.println("Init FS");
   gfx->println("Init FS");
-  // if (!LittleFS.begin(false, "/root"))
-  // if (!SPIFFS.begin(false, "/root"))
-  // if (!FFat.begin(false, "/root"))
+  //  if (!LittleFS.begin(false, "/root"))
+  //  if (!SPIFFS.begin(false, "/root"))
+  //  if (!FFat.begin(false, "/root"))
   SPIClass spi = SPIClass(HSPI);
   // spi.begin(14 /* SCK */, 2 /* MISO */, 15 /* MOSI */, 13 /* CS */);
-  spi.begin(14 /* SCK */, 4 /* MISO */, 15 /* MOSI */, 13 /* CS */);
-  if (!SD.begin(13, spi, 80000000))
-  // if ((!SD_MMC.begin("/root")) && (!SD_MMC.begin("/root")) && (!SD_MMC.begin("/root")) && (!SD_MMC.begin("/root"))) /* 4-bit SD bus mode */
-  // if ((!SD_MMC.begin("/root", true)) && (!SD_MMC.begin("/root", true)) && (!SD_MMC.begin("/root", true)) && (!SD_MMC.begin("/root", true))) /* 1-bit SD bus mode */
+  // spi.begin(14 /* SCK */, 4 /* MISO */, 15 /* MOSI */, 13 /* CS */);
+  spi.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
+  if (!SD.begin(SD_CS, spi, 40000000))
+  // if (!SD.begin(SD_CS))
+  //   if ((!SD_MMC.begin("/root")) && (!SD_MMC.begin("/root")) && (!SD_MMC.begin("/root")) && (!SD_MMC.begin("/root"))) /* 4-bit SD bus mode */
+  //   if ((!SD_MMC.begin("/root", true)) && (!SD_MMC.begin("/root", true)) && (!SD_MMC.begin("/root", true)) && (!SD_MMC.begin("/root", true))) /* 1-bit SD bus mode */
   {
     Serial.println("ERROR: File system mount failed!");
     gfx->println("ERROR: File system mount failed!");
@@ -106,9 +131,9 @@ void setup()
     bool aac_file_available = false;
     Serial.println("Open AAC file: " AAC_FILENAME);
     gfx->println("Open AAC file: " AAC_FILENAME);
-    // File aFile = LittleFS.open(AAC_FILENAME);
-    // File aFile = SPIFFS.open(AAC_FILENAME);
-    // File aFile = FFat.open(AAC_FILENAME);
+    //  File aFile = LittleFS.open(AAC_FILENAME);
+    //  File aFile = SPIFFS.open(AAC_FILENAME);
+    //  File aFile = FFat.open(AAC_FILENAME);
     File aFile = SD.open(AAC_FILENAME);
     // File aFile = SD_MMC.open(AAC_FILENAME);
     if (aFile)
@@ -119,9 +144,9 @@ void setup()
     {
       Serial.println("Open MP3 file: " MP3_FILENAME);
       gfx->println("Open MP3 file: " MP3_FILENAME);
-      // aFile = LittleFS.open(MP3_FILENAME);
-      // aFile = SPIFFS.open(MP3_FILENAME);
-      // aFile = FFat.open(MP3_FILENAME);
+      //  aFile = LittleFS.open(MP3_FILENAME);
+      //  aFile = SPIFFS.open(MP3_FILENAME);
+      //  aFile = FFat.open(MP3_FILENAME);
       aFile = SD.open(MP3_FILENAME);
       // aFile = SD_MMC.open(MP3_FILENAME);
     }
@@ -135,9 +160,9 @@ void setup()
     {
       Serial.println("Open MJPEG file: " MJPEG_FILENAME);
       gfx->println("Open MJPEG file: " MJPEG_FILENAME);
-      // File vFile = LittleFS.open(MJPEG_FILENAME);
-      // File vFile = SPIFFS.open(MJPEG_FILENAME);
-      // File vFile = FFat.open(MJPEG_FILENAME);
+      //  File vFile = LittleFS.open(MJPEG_FILENAME);
+      //  File vFile = SPIFFS.open(MJPEG_FILENAME);
+      //  File vFile = FFat.open(MJPEG_FILENAME);
       File vFile = SD.open(MJPEG_FILENAME);
       // File vFile = SD_MMC.open(MJPEG_FILENAME);
       if (!vFile || vFile.isDirectory())
@@ -233,7 +258,7 @@ void setup()
 #define LEGEND_H_COLOR 0x7BEF
 #define LEGEND_I_COLOR 0xBDE4
 #define LEGEND_J_COLOR 0x15F9
-        // gfx->setCursor(0, 0);
+        gfx->setCursor(0, 0);
         gfx->setTextColor(WHITE);
         gfx->printf("Played frames: %d\n", played_frames);
         gfx->printf("Skipped frames: %d (%0.1f %%)\n", skipped_frames, 100.0 * skipped_frames / total_frames);

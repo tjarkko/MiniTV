@@ -1,8 +1,14 @@
 #define READ_BUFFER_SIZE 1024
 // #define MAXOUTPUTSIZE (MAX_BUFFERED_PIXELS / 16 / 16)
-#define MAXOUTPUTSIZE (288 / 3 / 16)
+// #define MAXOUTPUTSIZE (288 / 2 / 16)
+// #define MAXOUTPUTSIZE (128 / 1 / 16)
+#define MAXOUTPUTSIZE (8)
 #define NUMBER_OF_DECODE_BUFFER 3
 #define NUMBER_OF_DRAW_BUFFER 9
+
+/* #define MAXOUTPUTSIZE (8)
+#define NUMBER_OF_DECODE_BUFFER 1
+#define NUMBER_OF_DRAW_BUFFER 4 */
 
 #include <FS.h>
 #include <JPEGDEC.h>
@@ -271,7 +277,8 @@ bool mjpeg_read_frame()
     if (found_FFD9)
     {
       // log_i("Found FFD9 at: %d.", _mjpeg_buf_offset);
-      if (_mjpeg_buf_offset > _mjpegBufSize) {
+      if (_mjpeg_buf_offset > _mjpegBufSize)
+      {
         log_e("_mjpeg_buf_offset(%d) > _mjpegBufSize (%d)", _mjpeg_buf_offset, _mjpegBufSize);
       }
       return true;
